@@ -66,6 +66,7 @@ def test_categoria_invalida_vira_502(client, monkeypatch):
 
 
 def test_erro_do_gemini_vira_502(client, monkeypatch):
+    monkeypatch.setattr(gemini, "ESPERA_BASE", 0)
     mock_gemini(monkeypatch, status=429, payload={"error": "quota"})
     r = client.post("/classificar", json={"nome": "A", "email": "a@x.com", "mensagem": "abc"})
     assert r.status_code == 502
@@ -80,3 +81,21 @@ def test_sem_chave_vira_502(client, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY")
     r = client.post("/classificar", json={"nome": "A", "email": "a@x.com", "mensagem": "abc"})
     assert r.status_code == 502
+
+
+def test_tenta_de_novo_quando_gemini_sobrecarregado(client, monkeypatch):
+    monkeypatch.setattr(gemini, "ESPERA_BASE", 0)
+    chamadas = {"n": 0}
+
+    def handler(request):
+        chamadas["n"] += 1
+        if chamadas["n"] < 3:
+            return httpx.Response(503, json={"error": "high demand"})
+        return httpx.Response(200, json=resposta_gemini(json.dumps(RESPOSTA_IA)))
+
+    original = gemini.classificar
+    monkeypatch.setattr(gemini, "classificar", lambda n, m: original(
+        n, m, client=httpx.Client(transport=httpx.MockTransport(handler))))
+    r = client.post("/classificar", json={"nome": "A", "email": "a@x.com", "mensagem": "abc"})
+    assert r.status_code == 200
+    assert chamadas["n"] == 3

@@ -1,6 +1,7 @@
 """Cliente mínimo da API REST do Google Gemini (generateContent)."""
 import json
 import os
+import time
 
 import httpx
 from pydantic import ValidationError
@@ -29,6 +30,10 @@ RESPONSE_SCHEMA = {
     "propertyOrdering": ["categoria", "setor", "urgencia", "sentimento", "resumo",
                          "palavras_chave", "resposta_sugerida", "confianca"],
 }
+
+
+TENTATIVAS = int(os.getenv("GEMINI_TENTATIVAS", "4"))
+ESPERA_BASE = float(os.getenv("GEMINI_ESPERA_BASE", "1.5"))
 
 
 class ErroIA(Exception):
@@ -68,8 +73,13 @@ def classificar(nome: str, mensagem: str, client: httpx.Client | None = None) ->
     }
     http = client or httpx.Client(timeout=60)
     try:
-        resp = http.post(GEMINI_URL.format(model=modelo_configurado()),
-                         headers={"x-goog-api-key": api_key}, json=corpo)
+        # Tenta de novo quando o Gemini está sobrecarregado (429/503), com espera crescente
+        for tentativa in range(TENTATIVAS):
+            resp = http.post(GEMINI_URL.format(model=modelo_configurado()),
+                             headers={"x-goog-api-key": api_key}, json=corpo)
+            if resp.status_code not in (429, 500, 503) or tentativa == TENTATIVAS - 1:
+                break
+            time.sleep(ESPERA_BASE * (2 ** tentativa))
     except httpx.HTTPError as exc:
         raise ErroIA(f"Erro de conexão com o Gemini: {exc}") from exc
     finally:
