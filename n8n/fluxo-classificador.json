@@ -6,10 +6,7 @@
       "name": "Webhook - Receber mensagem",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ],
+      "position": [0, 0],
       "webhookId": "9f10b701-1eff-46c6-80c1-3b3fa81b29fa",
       "parameters": {
         "httpMethod": "POST",
@@ -23,10 +20,7 @@
       "name": "Edit Fields - Preparar dados",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        220,
-        0
-      ],
+      "position": [220, 0],
       "parameters": {
         "mode": "manual",
         "includeOtherFields": false,
@@ -60,10 +54,7 @@
       "name": "HTTP Request - Classificar com IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        440,
-        0
-      ],
+      "position": [440, 0],
       "parameters": {
         "method": "POST",
         "url": "={{ $env.API_URL }}/classificar",
@@ -80,10 +71,7 @@
       "name": "Edit Fields - Montar e-mail",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        660,
-        0
-      ],
+      "position": [660, 0],
       "parameters": {
         "mode": "manual",
         "includeOtherFields": true,
@@ -111,13 +99,14 @@
       "name": "Send Email - Encaminhar",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [
-        880,
-        0
-      ],
+      "position": [880, 0],
       "credentials": {
         "smtp": {
           "id": "",
+          "host": "mail.digid.com.br",
+          "port": 465,
+          "user": "={{ $env.EMAIL_REMETENTE }}",
+          "password": "={{ $env.EMAIL_SENHA }}",
           "name": "SMTP e-mail"
         }
       },
@@ -137,10 +126,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        1100,
-        0
-      ],
+      "position": [1100, 0],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({ status: 'encaminhado', destino: $env.EMAIL_DESTINO, cliente: $('HTTP Request - Classificar com IA').item.json.cliente, classificacao: $('HTTP Request - Classificar com IA').item.json.classificacao }) }}",
