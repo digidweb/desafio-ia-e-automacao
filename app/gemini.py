@@ -41,7 +41,7 @@ class ErroIA(Exception):
 
 
 def modelo_configurado() -> str:
-    return os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+    return os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
 
 def extrair_json(texto: str) -> dict:

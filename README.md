@@ -60,7 +60,7 @@ faz o **encaminhamento**.
     "resposta_sugerida": "Olá, Ana! Lamentamos muito pelo transtorno...",
     "confianca": 0.95
   },
-  "modelo": "gemini-3.8-flash"
+  "modelo": "gemini-3.6-flash"
 }
 ```
 
@@ -68,7 +68,7 @@ faz o **encaminhamento**.
 
 | Camada      | Tecnologia                                             |
 |-------------|--------------------------------------------------------|
-| IA          | Google Gemini (`gemini-3.8-flash`) via API REST, saída JSON com `responseSchema` |
+| IA          | Google Gemini (`gemini-3.6-flash`) via API REST, saída JSON com `responseSchema` |
 | Back-end    | Python 3.12, FastAPI, Pydantic, httpx                   |
 | Automação   | n8n (Webhook, Edit Fields, HTTP Request, Send Email, Respond to Webhook) |
 | E-mail      | SMTP de uma conta de e-mail em cPanel                   |
@@ -114,6 +114,15 @@ contidas nela (proteção básica contra *prompt injection*). A chamada usa `tem
 | 4 | **Edit Fields - Montar e-mail** | Monta assunto e corpo HTML com a classificação. |
 | 5 | **Send Email - Encaminhar** | Envia o e-mail para `EMAIL_DESTINO` via SMTP. |
 | 6 | **Respond to Webhook** | Devolve ao chamador o status e a classificação. |
+
+### Observação: alta demanda no Gemini
+Durante os testes o Gemini respondeu algumas vezes `503 – This model is currently experiencing high demand`
+(visível como `ERRO 500` em parte do print do terminal). Para lidar com isso:
+- a API repete a chamada automaticamente em caso de `429`/`503`, com espera crescente
+  (`GEMINI_TENTATIVAS`, padrão 4);
+- o node **HTTP Request** do n8n tem *Retry on fail* (3 tentativas) e timeout de 120 s;
+- se a IA continuar indisponível ou responder fora do formato, a API devolve `502` com o motivo em `detail`,
+  em vez de encaminhar dados inválidos.
 
 ## 6. Como executar
 
@@ -167,7 +176,7 @@ pytest                 # testes (não chamam o Gemini de verdade)
 | Variável | Descrição |
 |----------|-----------|
 | `GEMINI_API_KEY` | Chave da API do Gemini |
-| `GEMINI_MODEL` | Modelo usado (padrão `gemini-3.8-flash`; se der erro 404, troque por outro modelo disponível no AI Studio) |
+| `GEMINI_MODEL` | Modelo usado (padrão `gemini-3.6-flash`; se der erro 404, troque por outro modelo disponível no AI Studio) |
 | `EMAIL_DESTINO` | E-mail que recebe as mensagens classificadas |
 | `EMAIL_REMETENTE` | Conta de e-mail (SMTP) usada no envio; deve ser a mesma da credencial |
 | `GENERIC_TIMEZONE` | Fuso do n8n |
