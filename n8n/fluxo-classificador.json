@@ -103,10 +103,6 @@
       "credentials": {
         "smtp": {
           "id": "",
-          "host": "mail.digid.com.br",
-          "port": 465,
-          "user": "={{ $env.EMAIL_REMETENTE }}",
-          "password": "={{ $env.EMAIL_SENHA }}",
           "name": "SMTP e-mail"
         }
       },
