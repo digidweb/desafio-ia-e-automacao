@@ -3,12 +3,12 @@
 Solução para o **Desafio Técnico KODIE: IA e Automação** (caso **4.1, Classificação de Mensagens**).
 Uma API em **FastAPI** usa o **Google Gemini** para ler cada mensagem de cliente e devolver um **JSON estruturado**
 (categoria, setor, urgência, sentimento, resumo e resposta sugerida). Um fluxo no **n8n** recebe a mensagem,
-chama a API e **encaminha o resultado por e-mail (Gmail)** ao responsável.
+chama a API e **encaminha o resultado por e-mail (SMTP)** ao responsável.
 
 ```
 Cliente ──POST──▶ n8n Webhook ──▶ Edit Fields ──▶ HTTP Request ──▶ API FastAPI ──▶ Gemini
                                                                       │
-                     Respond to Webhook ◀── Send Email (Gmail) ◀── Edit Fields (monta e-mail)
+                     Respond to Webhook ◀── Send Email (SMTP) ◀── Edit Fields (monta e-mail)
 ```
 
 ---
@@ -38,7 +38,7 @@ processo para identificar o assunto e o setor responsável. A solução precisa:
 4. A API **valida** a resposta com Pydantic (enums, tipos, faixa de confiança). Se a IA sair do formato, a API
    devolve erro 502 em vez de propagar dados inválidos.
 5. O n8n monta um e-mail com assunto no formato `[RECLAMACAO · ALTA] logistica – João Silva` e o corpo com resumo,
-   palavras-chave, mensagem original e **rascunho de resposta**, e envia via **Gmail**.
+   palavras-chave, mensagem original e **rascunho de resposta**, e envia por **SMTP** (conta de e-mail do domínio, hospedada em cPanel).
 6. O webhook responde ao chamador com o JSON da classificação.
 
 A IA, portanto, não apenas "responde": ela **interpreta, classifica, prioriza e sugere a resposta**, e a automação
@@ -71,7 +71,7 @@ faz o **encaminhamento**.
 | IA          | Google Gemini (`gemini-3.8-flash`) via API REST, saída JSON com `responseSchema` |
 | Back-end    | Python 3.12, FastAPI, Pydantic, httpx                   |
 | Automação   | n8n (Webhook, Edit Fields, HTTP Request, Send Email, Respond to Webhook) |
-| E-mail      | Gmail (SMTP com senha de app)                           |
+| E-mail      | SMTP de uma conta de e-mail em cPanel                   |
 | Infra       | Docker e Docker Compose                                 |
 | Testes      | pytest (Gemini simulado, sem gastar cota)               |
 
@@ -112,7 +112,7 @@ contidas nela (proteção básica contra *prompt injection*). A chamada usa `tem
 | 2 | **Edit Fields - Preparar dados** | Extrai os campos do `body` e remove espaços extras. |
 | 3 | **HTTP Request - Classificar com IA** | Chama `http://api:8000/classificar` e recebe o JSON da IA. |
 | 4 | **Edit Fields - Montar e-mail** | Monta assunto e corpo HTML com a classificação. |
-| 5 | **Send Email - Encaminhar (Gmail)** | Envia o e-mail para `EMAIL_DESTINO` via SMTP do Gmail. |
+| 5 | **Send Email - Encaminhar** | Envia o e-mail para `EMAIL_DESTINO` via SMTP. |
 | 6 | **Respond to Webhook** | Devolve ao chamador o status e a classificação. |
 
 ## 6. Como executar
@@ -120,7 +120,7 @@ contidas nela (proteção básica contra *prompt injection*). A chamada usa `tem
 ### Pré-requisitos
 - Docker e Docker Compose
 - Chave do Gemini: <https://aistudio.google.com/apikey>
-- Uma conta Gmail com **verificação em duas etapas** e uma **senha de app** (<https://myaccount.google.com/apppasswords>)
+- Uma conta de e-mail com acesso SMTP (ex.: conta criada no cPanel da hospedagem)
 
 ### Passo a passo (Docker Compose)
 
@@ -136,8 +136,9 @@ docker compose up -d --build
 
 **Importar o fluxo no n8n**
 1. No n8n: *Workflows → Import from File* → escolha `n8n/fluxo-classificador.json`.
-2. Abra o node **Send Email**, crie a credencial **SMTP**:
-   host `smtp.gmail.com`, porta `465`, SSL ligado, usuário = seu Gmail, senha = senha de app.
+2. Abra o node **Send Email** e crie a credencial **SMTP** com os dados da conta de e-mail
+   (no cPanel: *E-mail Accounts → Connect Devices*): host `mail.seudominio.com.br`, porta `465`,
+   SSL/TLS ligado, usuário = endereço completo do e-mail, senha = senha da conta.
 3. Salve e **ative** o fluxo (botão *Active/Publish*).
 
 **Testar**
@@ -168,7 +169,7 @@ pytest                 # testes (não chamam o Gemini de verdade)
 | `GEMINI_API_KEY` | Chave da API do Gemini |
 | `GEMINI_MODEL` | Modelo usado (padrão `gemini-3.8-flash`; se der erro 404, troque por outro modelo disponível no AI Studio) |
 | `EMAIL_DESTINO` | E-mail que recebe as mensagens classificadas |
-| `EMAIL_REMETENTE` | Conta Gmail usada no envio |
+| `EMAIL_REMETENTE` | Conta de e-mail (SMTP) usada no envio; deve ser a mesma da credencial |
 | `GENERIC_TIMEZONE` | Fuso do n8n |
 
 > Nenhuma chave é publicada: o `.env` está no `.gitignore` e só o `.env.example` vai para o repositório.
@@ -201,7 +202,7 @@ Execução concluída com todos os nodes em verde.
 **Edit Fields - Montar e-mail**: cria `email_assunto` e `email_html` a partir da classificação.
 ![Edit Fields - Montar e-mail](docs/prints/06-node-montar-email.png)
 
-**Send Email - Encaminhar (Gmail)**: credencial SMTP do Gmail, destino `{{ $env.EMAIL_DESTINO }}`, formato HTML.
+**Send Email - Encaminhar**: credencial SMTP da conta de e-mail, destino `{{ $env.EMAIL_DESTINO }}`, formato HTML.
 ![Send Email](docs/prints/07-node-send-email.png)
 
 **Respond to Webhook**: devolve JSON com status e classificação.
@@ -212,7 +213,7 @@ Execução concluída com todos os nodes em verde.
 Saída do HTTP Request com o JSON gerado pela IA:
 ![Saída da IA](docs/prints/09-resultado-ia.png)
 
-E-mail recebido na caixa de entrada:
+E-mail recebido na caixa de entrada do destinatário:
 ![E-mail recebido](docs/prints/10-email-recebido.png)
 
 Resposta do webhook no terminal (script de exemplos):

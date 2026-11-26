@@ -108,7 +108,7 @@
     },
     {
       "id": "15997b50-59b0-4905-8ffe-5434f3e6d8f7",
-      "name": "Send Email - Encaminhar (Gmail)",
+      "name": "Send Email - Encaminhar",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
@@ -118,7 +118,7 @@
       "credentials": {
         "smtp": {
           "id": "",
-          "name": "Gmail SMTP"
+          "name": "SMTP e-mail"
         }
       },
       "parameters": {
@@ -186,14 +186,14 @@
       "main": [
         [
           {
-            "node": "Send Email - Encaminhar (Gmail)",
+            "node": "Send Email - Encaminhar",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Email - Encaminhar (Gmail)": {
+    "Send Email - Encaminhar": {
       "main": [
         [
           {
