@@ -1,0 +1,213 @@
+{
+  "name": "Classificador de Mensagens de Clientes",
+  "nodes": [
+    {
+      "id": "6798a1f3-da6f-45ea-bde9-f7a93b861268",
+      "name": "Webhook - Receber mensagem",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "9f10b701-1eff-46c6-80c1-3b3fa81b29fa",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mensagens",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "269f9036-7635-4af7-bc44-2666507d53a1",
+      "name": "Edit Fields - Preparar dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6972ab26-16ff-4f3f-a267-cc38766138ce",
+              "name": "nome",
+              "type": "string",
+              "value": "={{ ($json.body.nome || 'Cliente').trim() }}"
+            },
+            {
+              "id": "6e5d9f3f-59fa-461c-ac63-05c9073a0a47",
+              "name": "email",
+              "type": "string",
+              "value": "={{ ($json.body.email || '').trim() }}"
+            },
+            {
+              "id": "ac6163de-9ae2-45a9-8885-ec90148562b5",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ ($json.body.mensagem || '').trim() }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8ffb1f25-c1a1-4e56-bb92-ae2ba2017418",
+      "name": "HTTP Request - Classificar com IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_URL }}/classificar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ nome: $json.nome, email: $json.email, mensagem: $json.mensagem }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "3aa8f452-3e21-495c-98a6-772affc44fe4",
+      "name": "Edit Fields - Montar e-mail",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c3a29267-046b-49cb-8f0d-d3953d7600ea",
+              "name": "email_assunto",
+              "type": "string",
+              "value": "=[{{ $json.classificacao.categoria.toUpperCase() }} · {{ $json.classificacao.urgencia.toUpperCase() }}] {{ $json.classificacao.setor }} – {{ $json.cliente.nome }}"
+            },
+            {
+              "id": "2cad037b-0953-485b-9dbf-bb01fec5ecb1",
+              "name": "email_html",
+              "type": "string",
+              "value": "=<h2 style=\"margin:0 0 8px\">Nova mensagem classificada pela IA</h2>\n<table cellpadding=\"6\" style=\"border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px\">\n<tr><td><b>Cliente</b></td><td>{{ $json.cliente.nome }} &lt;{{ $json.cliente.email }}&gt;</td></tr>\n<tr><td><b>Categoria</b></td><td>{{ $json.classificacao.categoria }}</td></tr>\n<tr><td><b>Setor responsável</b></td><td>{{ $json.classificacao.setor }}</td></tr>\n<tr><td><b>Urgência</b></td><td>{{ $json.classificacao.urgencia }}</td></tr>\n<tr><td><b>Sentimento</b></td><td>{{ $json.classificacao.sentimento }}</td></tr>\n<tr><td><b>Confiança</b></td><td>{{ Math.round($json.classificacao.confianca * 100) }}%</td></tr>\n<tr><td><b>Palavras-chave</b></td><td>{{ $json.classificacao.palavras_chave.join(', ') }}</td></tr>\n<tr><td><b>Resumo</b></td><td>{{ $json.classificacao.resumo }}</td></tr>\n</table>\n<h3>Mensagem original</h3>\n<blockquote style=\"border-left:4px solid #ccc;padding-left:10px\">{{ $json.cliente.mensagem }}</blockquote>\n<h3>Resposta sugerida</h3>\n<p>{{ $json.classificacao.resposta_sugerida }}</p>\n<p style=\"color:#888;font-size:12px\">Classificado automaticamente pelo modelo {{ $json.modelo }}.</p>"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "15997b50-59b0-4905-8ffe-5434f3e6d8f7",
+      "name": "Send Email - Encaminhar (Gmail)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "",
+          "name": "Gmail SMTP"
+        }
+      },
+      "parameters": {
+        "fromEmail": "={{ $env.EMAIL_REMETENTE }}",
+        "toEmail": "={{ $env.EMAIL_DESTINO }}",
+        "subject": "={{ $json.email_assunto }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      }
+    },
+    {
+      "id": "49bf6918-6ea5-4e03-b6c3-8f07c8fe481f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'encaminhado', destino: $env.EMAIL_DESTINO, cliente: $('HTTP Request - Classificar com IA').item.json.cliente, classificacao: $('HTTP Request - Classificar com IA').item.json.classificacao }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Receber mensagem": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Preparar dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Preparar dados": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Classificar com IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Classificar com IA": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - Montar e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - Montar e-mail": {
+      "main": [
+        [
+          {
+            "node": "Send Email - Encaminhar (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email - Encaminhar (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

@@ -1,0 +1,7 @@
+[
+  {"nome": "João Silva", "email": "joao@exemplo.com", "mensagem": "Comprei uma cafeteira há 10 dias e ela chegou com a jarra quebrada. Já mandei 3 e-mails e ninguém respondeu. Estou muito insatisfeito!"},
+  {"nome": "Maria Souza", "email": "maria@exemplo.com", "mensagem": "Boa tarde! Vocês entregam em Palmas-TO? Qual o prazo médio de entrega?"},
+  {"nome": "Carlos Pereira", "email": "carlos@exemplo.com", "mensagem": "Preciso da segunda via do boleto de novembro, pois perdi o e-mail original. Podem me enviar?"},
+  {"nome": "Ana Lima", "email": "ana@exemplo.com", "mensagem": "Fui cobrada duas vezes no cartão pela mesma compra! Quero o estorno urgente."},
+  {"nome": "Pedro Rocha", "email": "pedro@exemplo.com", "mensagem": "O aplicativo de vocês não abre desde a última atualização, aparece erro 500. Como resolvo?"}
+]
